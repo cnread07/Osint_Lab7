@@ -1,0 +1,13 @@
+snscrape
+requests
+beautifulsoup4
+pandas
+numpy
+sqlalchemy
+langdetect
+textblob
+matplotlib
+schedule
+python-dotenv
+nltk
+scikit-learn

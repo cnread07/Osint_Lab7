@@ -24,8 +24,6 @@ Osint_Lab7/
 ├── collectors/               
 │   ├── twitter_collector.py
 │   ├── reddit_collector.py
-│   ├── facebook_collector.py
-│   ├── instagram_collector.py
 │   └── snscrape_collector.py
 ├── utils/                   
 │   ├── cleaner.py
