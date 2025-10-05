@@ -17,23 +17,28 @@ The collected data is stored in an **SQLite database** for further intelligence 
 
 ## 🧩 Project Structure
 Osint_Lab7/
-│── main.py # Entry point for pipeline
-│── .env # API keys and tokens (not uploaded)
-│── requirements.txt # Python dependencies
-│── collectors/ # Collectors for each social platform
+│
+├── main.py # Entry point for the pipeline
+├── .env # API keys and tokens (not uploaded)
+├── requirements.txt # Python dependencies
+│
+├── collectors/ # Collectors for each social platform
 │ ├── twitter_collector.py
 │ ├── reddit_collector.py
 │ ├── facebook_collector.py
 │ ├── instagram_collector.py
 │ └── snscrape_collector.py
-│── utils/ # Utilities for data cleaning, storage, analysis
+│
+├── utils/ # Utilities for data cleaning, storage, analysis
 │ ├── cleaner.py
 │ ├── database.py
 │ ├── sentiment.py
 │ └── visualizer.py
-│── data/
+│
+├── data/
 │ └── osint.db # SQLite database
-│── screenshots/ # Evidence of working pipeline
+│
+└── screenshots/ # Evidence of working pipeline
 
 ---
 
