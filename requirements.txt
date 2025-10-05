@@ -11,3 +11,11 @@ schedule
 python-dotenv
 nltk
 scikit-learn
+# Multi-platform collectors
+linkedin-api
+discord.py
+Mastodon.py
+PyGithub
+vk-api
+tweepy
+praw
