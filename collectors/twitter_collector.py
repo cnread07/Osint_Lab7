@@ -1,40 +1,21 @@
-# collectors/twitter_collector.py
-import os, time
-from dotenv import load_dotenv
-import tweepy
+# twitter_collector.py
+from datetime import datetime
+import snscrape.modules.twitter as sntwitter
 
-load_dotenv()
-BEARER = os.getenv("TWITTER_BEARER")
-
-def fetch_twitter_v2(query="osint", max_results=200):
-    """Fetch recent tweets (10-100) using Twitter API v2 (bearer token)."""
-    if not BEARER:
-        print("TWITTER_BEARER not set; skipping v2 fetch")
-        return []
-    if max_results < 10:
-        max_results = 10
-    if max_results > 100:
-        max_results = 100
-
-    client = tweepy.Client(bearer_token=BEARER)
-    # Single attempt: if rate-limited, don't block the pipeline — return empty and log.
-    try:
-        resp = client.search_recent_tweets(query=query, tweet_fields=["created_at","lang","author_id"], max_results=max_results)
-    except tweepy.TooManyRequests:
-        print("Twitter API rate-limited (429). Skipping twitter v2 fetch this run.")
-        return []
-    except Exception as e:
-        print("Twitter API error:", e)
-        return []
-
+def fetch_twitter(keyword, limit=10):
     results = []
-    if resp and resp.data:
-        for t in resp.data:
+    try:
+        scraper = sntwitter.TwitterSearchScraper(keyword)
+        for i, tweet in enumerate(scraper.get_items()):
+            if i >= limit:
+                break
             results.append({
-                "platform": "twitter",
-                "user": str(t.author_id),
-                "timestamp": str(t.created_at),
-                "text": t.text,
-                "url": f"https://twitter.com/i/web/status/{t.id}"
+                'platform': 'twitter',
+                'user': getattr(tweet.user, 'username', '') or getattr(tweet.user, 'displayname', ''),
+                'text': tweet.content,
+                'timestamp': tweet.date.strftime("%Y-%m-%dT%H:%M:%S"),
+                'url': f"https://twitter.com/{tweet.user.username}/status/{tweet.id}"
             })
+    except Exception as e:
+        print("twitter_collector error:", e)
     return results

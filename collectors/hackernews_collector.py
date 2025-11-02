@@ -1,45 +1,27 @@
-# collectors/hackernews_collector.py
+# hackernews_collector.py
 import requests
-from typing import List, Dict
-import time
+from datetime import datetime
 
-def fetch_hackernews(query="osint", limit=5) -> List[Dict]:
-    """Fetch HackerNews stories using their free API.
-    
-    No API key required, completely free to use.
-    API Docs: https://github.com/HackerNews/API
-    
-    Returns a list of dicts with keys: platform, user, timestamp, text, url.
-    """
+def fetch_hackernews(keyword, limit=10):
+    results = []
     try:
-        # Search using Algolia HN Search API (free, no key needed)
-        search_url = "http://hn.algolia.com/api/v1/search"
-        params = {
-            'query': query,
-            'tags': 'story',
-            'hitsPerPage': limit
-        }
-        
-        response = requests.get(search_url, params=params, timeout=10)
-        response.raise_for_status()
-        
-        data = response.json()
-        results = []
-        
-        for item in data.get('hits', []):
-            # Get the actual story URL
-            story_url = f"https://news.ycombinator.com/item?id={item.get('objectID', '')}"
-            
-            results.append({
-                "platform": "hackernews",
-                "user": item.get('author', 'anonymous'),
-                "timestamp": item.get('created_at', ''),
-                "text": item.get('title', ''),
-                "url": story_url
-            })
-        
-        return results
-        
+        url = f'https://hn.algolia.com/api/v1/search?query={requests.utils.quote(keyword)}&hitsPerPage={limit}'
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            for hit in r.json().get('hits', [])[:limit]:
+                user = hit.get('author') or ''
+                title = hit.get('title') or hit.get('story_text') or ''
+                created = hit.get('created_at') or ''
+                link = hit.get('url') or f"https://news.ycombinator.com/item?id={hit.get('objectID')}"
+                results.append({
+                    'platform': 'hackernews',
+                    'user': user,
+                    'text': title,
+                    'timestamp': created,
+                    'url': link
+                })
+        else:
+            print("HN API error:", r.status_code)
     except Exception as e:
-        print(f"HackerNews collector failed: {type(e).__name__}: {e}")
-        return []
+        print("hackernews_collector error:", e)
+    return results

@@ -1,49 +1,31 @@
-# collectors/github_collector.py
+# github_collector.py
 import os
-from dotenv import load_dotenv
-from typing import List, Dict
+import requests
+from datetime import datetime
 
-load_dotenv()
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')  # optional: set in .env to increase rate limit
 
-def fetch_github(query="leak", limit=10) -> List[Dict]:
-    """Fetch GitHub repositories using PyGithub.
-    
-    Requires GITHUB_TOKEN in .env (optional but recommended for higher rate limits)
-    Create a personal access token at https://github.com/settings/tokens
-    
-    Returns a list of dicts with keys: platform, user, timestamp, text, url.
-    """
+def fetch_github(keyword, limit=10):
+    results = []
     try:
-        from github import Github
-        
-        token = os.getenv("GITHUB_TOKEN")
-        
-        if token:
-            g = Github(token.strip())
+        headers = {'Accept': 'application/vnd.github.v3+json'}
+        if GITHUB_TOKEN:
+            headers['Authorization'] = f'token {GITHUB_TOKEN}'
+        q = requests.utils.quote(keyword)
+        url = f'https://api.github.com/search/repositories?q={q}&sort=stars&order=desc&per_page={limit}'
+        resp = requests.get(url, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            for repo in data.get('items', [])[:limit]:
+                results.append({
+                    'platform': 'github',
+                    'user': repo.get('owner', {}).get('login', ''),
+                    'text': repo.get('description') or repo.get('name'),
+                    'timestamp': repo.get('created_at') or '',
+                    'url': repo.get('html_url')
+                })
         else:
-            g = Github()  # Unauthenticated (lower rate limits)
-            print("GitHub token not provided. Rate limits may be lower.")
-        
-        repos = g.search_repositories(query=query)
-        results = []
-        
-        for i, repo in enumerate(repos):
-            if i >= limit:
-                break
-            
-            results.append({
-                "platform": "github",
-                "user": repo.owner.login,
-                "timestamp": str(repo.created_at),
-                "text": repo.description or "",
-                "url": repo.html_url
-            })
-        
-        return results
-        
-    except ImportError:
-        print("PyGithub not installed. Install with: pip install PyGithub")
-        return []
+            print("GitHub API returned:", resp.status_code, resp.text)
     except Exception as e:
-        print(f"GitHub collector failed: {type(e).__name__}: {e}")
-        return []
+        print("github_collector error:", e)
+    return results

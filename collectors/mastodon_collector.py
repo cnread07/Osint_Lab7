@@ -1,63 +1,37 @@
-# collectors/mastodon_collector.py
-import os
-from dotenv import load_dotenv
-from typing import List, Dict
+# mastodon_collector.py
+import requests
+from datetime import datetime
 
-load_dotenv()
+# This function attempts to use the Mastodon instance search via mastodon.social or returns stub
+KNOWN_INSTANCES = [
+    "https://mastodon.social",
+    "https://mstdn.social"
+]
 
-def fetch_mastodon(hashtag="osint", limit=10) -> List[Dict]:
-    """Fetch Mastodon posts using Mastodon.py.
-    
-    Requires MASTODON_ACCESS_TOKEN and MASTODON_API_BASE_URL in .env
-    Register an app at your Mastodon instance to get credentials.
-    
-    Returns a list of dicts with keys: platform, user, timestamp, text, url.
-    """
+def fetch_mastodon(keyword, limit=10):
+    results = []
     try:
-        from mastodon import Mastodon
-        
-        access_token = os.getenv("MASTODON_ACCESS_TOKEN")
-        api_base_url = os.getenv("MASTODON_API_BASE_URL", "https://mastodon.social")
-        
-        if not access_token:
-            print("Mastodon access token missing. Set MASTODON_ACCESS_TOKEN in .env")
-            print("To get token: Create app at your Mastodon instance > Copy access token")
-            return []
-        
-        mastodon = Mastodon(
-            access_token=access_token.strip(),
-            api_base_url=api_base_url.strip()
-        )
-        
-        results = []
-        
-        # Try hashtag timeline first, fall back to public timeline if hashtag fails
-        try:
-            posts = mastodon.timeline_hashtag(hashtag, limit=limit)
-            if not posts:  # If no posts found for hashtag, try public timeline
-                posts = mastodon.timeline_public(limit=limit)
-        except Exception as hashtag_error:
-            print(f"Hashtag search failed, using public timeline: {hashtag_error}")
-            posts = mastodon.timeline_public(limit=limit)
-        
-        for p in posts:
-            # Remove HTML tags from content
-            import re
-            clean_text = re.sub('<[^<]+?>', '', p["content"])
-            
-            results.append({
-                "platform": "mastodon",
-                "user": p["account"]["username"],
-                "timestamp": str(p["created_at"]),
-                "text": clean_text,
-                "url": p["url"]
-            })
-        
-        return results
-        
-    except ImportError:
-        print("Mastodon.py not installed. Install with: pip install Mastodon.py")
-        return []
+        # Try Mastodon instance public timeline search (if instance supports it)
+        for inst in KNOWN_INSTANCES:
+            try:
+                search_url = f"{inst}/api/v2/search"
+                params = {'q': keyword, 'limit': limit, 'resolve': True}
+                r = requests.get(search_url, params=params, timeout=8)
+                if r.status_code == 200:
+                    data = r.json()
+                    for status in data.get('statuses', [])[:limit]:
+                        results.append({
+                            'platform': 'mastodon',
+                            'user': status.get('account', {}).get('acct', ''),
+                            'text': status.get('content', ''),
+                            'timestamp': status.get('created_at', ''),
+                            'url': status.get('url')
+                        })
+                    if results:
+                        break
+            except Exception:
+                continue
+        # fallback: if not found, return empty list
     except Exception as e:
-        print(f"Mastodon collector failed: {type(e).__name__}: {e}")
-        return []
+        print("mastodon_collector error:", e)
+    return results
