@@ -1,6 +1,7 @@
 # twitter_collector.py
 from datetime import datetime
 import snscrape.modules.twitter as sntwitter
+import time
 
 def fetch_twitter(keyword, limit=10):
     results = []
@@ -9,13 +10,22 @@ def fetch_twitter(keyword, limit=10):
         for i, tweet in enumerate(scraper.get_items()):
             if i >= limit:
                 break
+
+            user = getattr(tweet.user, 'username', None) or getattr(tweet.user, 'displayname', 'unknown')
+
             results.append({
                 'platform': 'twitter',
-                'user': getattr(tweet.user, 'username', '') or getattr(tweet.user, 'displayname', ''),
+                'user': user,
                 'text': tweet.content,
-                'timestamp': tweet.date.strftime("%Y-%m-%dT%H:%M:%S"),
-                'url': f"https://twitter.com/{tweet.user.username}/status/{tweet.id}"
+                'timestamp': tweet.date.strftime("%Y-%m-%dT%H:%M:%S") if tweet.date else None,
+                'url': f"https://x.com/{tweet.user.username}/status/{tweet.id}"
             })
+
+        # Handle case where snscrape returns nothing
+        if not results:
+            print(f"[twitter_collector] No tweets found for keyword: '{keyword}'")
+
     except Exception as e:
-        print("twitter_collector error:", e)
+        print(f"[twitter_collector] error: {type(e).__name__}: {e}")
+        time.sleep(2)  # small delay in case of rate limit
     return results
