@@ -1,7 +1,10 @@
 # collectors/linkedin_collector.py
 import os
 from dotenv import load_dotenv
+
 from typing import List, Dict
+from sentiment import add_sentiment
+from database import save_to_db
 
 load_dotenv()
 
@@ -37,9 +40,10 @@ def fetch_linkedin(keyword="cybersecurity", limit=10) -> List[Dict]:
                 "text": p.get("headline", ""),
                 "url": f"https://linkedin.com/in/{p.get('public_id', '')}"
             })
-        
+        # Add sentiment and store in DB
+        results = add_sentiment(results)
+        save_to_db(results)
         return results
-        
     except ImportError:
         print("linkedin-api not installed. Install with: pip install linkedin-api")
         return []

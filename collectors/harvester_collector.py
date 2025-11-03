@@ -1,13 +1,16 @@
 # harvester_collector.py
+
 import subprocess
 import json
 import os
 from datetime import datetime
+from sentiment import add_sentiment
+from database import save_to_db
 
 def fetch_theharvester(keyword, limit=10):
     """
     If theHarvester CLI is installed, tries to run it and parse JSON output.
-    Otherwise returns a best-effort stub that reports domain-like findings.
+    Returns only real results; no mock/fallback data.
     """
     results = []
     try:
@@ -38,18 +41,9 @@ def fetch_theharvester(keyword, limit=10):
                 os.remove("harvester_output.json")
             except:
                 pass
-            return results[:limit]
     except Exception as e:
-        # if theHarvester isn't available, fallback to a small stub
-        pass
-
-    # fallback stub: craft domain-like items
-    for i in range(min(limit, 5)):
-        results.append({
-            'platform': 'harvester',
-            'user': f"{keyword.split('.')[0]}",
-            'text': f"{keyword} - possible host/email found #{i+1}",
-            'timestamp': datetime.utcnow().isoformat(),
-            'url': ''
-        })
-    return results
+        print("harvester_collector error:", e)
+    # Only real results, no fallback
+    results = add_sentiment(results)
+    save_to_db(results)
+    return results[:limit]

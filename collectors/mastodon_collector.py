@@ -1,6 +1,9 @@
 # mastodon_collector.py
+
 import requests
 from datetime import datetime
+from sentiment import add_sentiment
+from database import save_to_db
 
 # This function attempts to use the Mastodon instance search via mastodon.social or returns stub
 KNOWN_INSTANCES = [
@@ -34,4 +37,7 @@ def fetch_mastodon(keyword, limit=10):
         # fallback: if not found, return empty list
     except Exception as e:
         print("mastodon_collector error:", e)
+    # Add sentiment and store in DB
+    results = add_sentiment(results)
+    save_to_db(results)
     return results

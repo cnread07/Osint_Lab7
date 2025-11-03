@@ -1,6 +1,9 @@
 # hackernews_collector.py
+
 import requests
 from datetime import datetime
+from sentiment import add_sentiment
+from database import save_to_db
 
 def fetch_hackernews(keyword, limit=10):
     results = []
@@ -24,4 +27,7 @@ def fetch_hackernews(keyword, limit=10):
             print("HN API error:", r.status_code)
     except Exception as e:
         print("hackernews_collector error:", e)
+    # Add sentiment and store in DB
+    results = add_sentiment(results)
+    save_to_db(results)
     return results

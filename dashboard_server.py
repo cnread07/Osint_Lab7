@@ -1,14 +1,23 @@
+
 #!/usr/bin/env python3
 """
 dashboard_server.py
 Flask backend for OSINT Dashboard — unified collectors + DB storage
 """
 
+
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import traceback
 import os
+import sys
 from dotenv import load_dotenv
+
+# Ensure 'collectors' folder is in import path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+collectors_path = os.path.join(current_dir, "collectors")
+if collectors_path not in sys.path:
+    sys.path.insert(0, collectors_path)
 
 # load env
 load_dotenv()
@@ -70,14 +79,24 @@ def get_stats():
         return jsonify({'error': str(e)}), 500
 
 
+
+
 @app.route('/api/search', methods=['GET'])
 def api_search():
     q = request.args.get('q', '').strip()
     platform = request.args.get('platform', 'all').lower()
     if not q:
-        return jsonify([])
+        return jsonify({'results': [], 'stats': {}})
 
-    # search DB first
+    # Always fetch new data and update DB
+    scraped = scrape_new_data(q, platform)
+    normalized = [normalize_record(r) for r in scraped]
+    try:
+        save_to_db(normalized)
+    except Exception as e:
+        print("Failed saving to DB:", e)
+
+    # Query DB for all matching results (including new ones)
     try:
         from database import get_connection
         conn = get_connection()
@@ -94,9 +113,13 @@ def api_search():
         rows = cur.fetchall()
         conn.close()
 
+        def count_occurrences(text, word):
+            if not text or not word:
+                return 0
+            return text.lower().count(word.lower())
+
         results = []
         for r in rows:
-            # rows return tuples in order (platform, user, text, sentiment, timestamp, url)
             rec = {
                 'platform': r[0],
                 'user': r[1],
@@ -105,25 +128,22 @@ def api_search():
                 'timestamp': r[4] or '',
                 'url': r[5] or ''
             }
+            rec['match_count'] = count_occurrences(rec['text'], q)
             results.append(rec)
 
-        if results:
-            return jsonify(results)
+        # Sort results by match_count (descending), then by timestamp (descending)
+        results.sort(key=lambda r: (r['match_count'], r['timestamp']), reverse=True)
+        # Remove match_count from output
+        for rec in results:
+            rec.pop('match_count', None)
+
+        # Also return updated stats for dashboard
+        stats = get_stats().json if hasattr(get_stats(), 'json') else get_stats()
+        return jsonify({'results': results, 'stats': stats})
     except Exception as e:
         print("DB search error:", e)
         traceback.print_exc()
-
-    # if none in DB -> scrape live
-    print(f"No DB results for '{q}' on '{platform}' -> scraping live")
-    scraped = scrape_new_data(q, platform)
-    # save to DB (normalized)
-    if scraped:
-        normalized = [normalize_record(r) for r in scraped]
-        try:
-            save_to_db(normalized)
-        except Exception as e:
-            print("Failed saving to DB:", e)
-    return jsonify(scraped)
+        return jsonify({'results': [], 'stats': {}})
 
 
 def safe_call(func, keyword, limit=10):

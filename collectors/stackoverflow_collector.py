@@ -1,5 +1,8 @@
 # stackoverflow_collector.py
+
 import requests
+from sentiment import add_sentiment
+from database import save_to_db
 
 def fetch_stackoverflow(keyword, limit=10):
     results = []
@@ -26,4 +29,7 @@ def fetch_stackoverflow(keyword, limit=10):
             print("StackOverflow API error:", r.status_code)
     except Exception as e:
         print("stackoverflow_collector error:", e)
+    # Add sentiment and store in DB
+    results = add_sentiment(results)
+    save_to_db(results)
     return results

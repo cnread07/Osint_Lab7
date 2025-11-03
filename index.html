@@ -384,12 +384,12 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌐 OSINT Pipeline Dashboard</h1>
+            <h1> OSINT Pipeline Dashboard</h1>
             <p>Real-time Social Media Intelligence Aggregation & Search</p>
         </div>
 
         <div class="search-section">
-            <h2>🔍 Search & Scrape</h2>
+            <h2> Search & Scrape</h2>
             <div class="search-container">
                 <input type="text" id="searchInput" class="search-input" placeholder="Enter keyword or phrase to search and scrape from social media...">
                 <button class="search-button" onclick="searchAndScrape()">Search & Scrape</button>
@@ -402,6 +402,7 @@
                 <button class="filter-btn" data-platform="instagram">Instagram</button>
                 <button class="filter-btn" data-platform="linkedin">LinkedIn</button>
                 <button class="filter-btn" data-platform="github">GitHub</button>
+                <button class="filter-btn" data-platform="stackoverflow">StackOverflow</button>
             </div>
         </div>
 
@@ -429,13 +430,13 @@
         </div>
 
         <div class="results-section">
-            <h2>📊 Search Results</h2>
+            <h2>Search Results</h2>
             <div class="results-info" id="resultsInfo">
                 Enter a search query above to find and scrape data from social media platforms
             </div>
             <div id="resultsContainer">
                 <div class="no-results">
-                    <div class="no-results-icon">🔎</div>
+                    <div class="no-results-icon"></div>
                     <h3>No search performed yet</h3>
                     <p>Start by entering a keyword or phrase in the search box above</p>
                 </div>
@@ -486,9 +487,9 @@
             }
         }
 
+
         async function searchAndScrape() {
             const searchQuery = document.getElementById('searchInput').value.trim();
-            
             if (!searchQuery) {
                 alert('Please enter a search query');
                 return;
@@ -507,12 +508,17 @@
 
             try {
                 const response = await fetch(`${BACKEND_URL}/api/search?q=${encodeURIComponent(searchQuery)}&platform=${currentFilter}`);
-                
                 if (response.ok) {
-                    const results = await response.json();
+                    const data = await response.json();
+                    const results = data.results || [];
+                    const stats = data.stats || {};
                     allResults = results;
                     displayResults(results);
                     document.getElementById('searchResults').textContent = results.length;
+                    // Update dashboard cards with new stats
+                    if (typeof stats.totalRecords !== 'undefined') document.getElementById('totalRecords').textContent = stats.totalRecords;
+                    if (typeof stats.platforms !== 'undefined') document.getElementById('activePlatforms').textContent = stats.platforms;
+                    if (typeof stats.avgSentiment !== 'undefined') document.getElementById('avgSentiment').textContent = stats.avgSentiment;
                 } else {
                     throw new Error('Backend not available');
                 }

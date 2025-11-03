@@ -21,7 +21,7 @@ def init_db():
         text TEXT,
         sentiment REAL,
         timestamp TEXT,
-        url TEXT
+        url TEXT UNIQUE
     )
     """)
     conn.commit()
@@ -34,7 +34,7 @@ def save_to_db(records):
     cur = conn.cursor()
     for r in records:
         cur.execute("""
-        INSERT INTO osint_data (platform, user, text, sentiment, timestamp, url)
+        INSERT OR IGNORE INTO osint_data (platform, user, text, sentiment, timestamp, url)
         VALUES (?, ?, ?, ?, ?, ?)
         """, (
             r.get('platform', ''),
